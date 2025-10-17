@@ -1,0 +1,31 @@
+{
+  "name": "react-security-analyzer",
+  "version": "1.0.0",
+  "description": "Advanced React Security Scanner with AST Analysis",
+  "main": "react-security-analyzer.js",
+  "scripts": {
+    "scan": "node react-security-analyzer.js",
+    "test": "node react-security-analyzer.js test-files"
+  },
+  "keywords": [
+    "react",
+    "security",
+    "analyzer",
+    "ast",
+    "vulnerability",
+    "scanner",
+    "xss",
+    "static-analysis"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.23.0",
+    "@babel/traverse": "^7.23.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

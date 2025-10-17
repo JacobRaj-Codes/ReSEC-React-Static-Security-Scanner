@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React Security Analysis Report</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --critical: #ef4444;
+            --high: #f97316;
+            --medium: #fbbf24;
+            --low: #3b82f6;
+            --bg: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            padding: 3rem 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 60px rgba(99, 102, 241, 0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .severity-badges {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--critical); border: 1px solid var(--critical); }
+        .badge-high { background: rgba(249, 115, 22, 0.2); color: var(--high); border: 1px solid var(--high); }
+        .badge-medium { background: rgba(251, 191, 36, 0.2); color: var(--medium); border: 1px solid var(--medium); }
+        .badge-low { background: rgba(59, 130, 246, 0.2); color: var(--low); border: 1px solid var(--low); }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            background: var(--bg-secondary);
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .vuln-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-left: 4px solid;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .vuln-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .vuln-card.critical { border-left-color: var(--critical); }
+        .vuln-card.high { border-left-color: var(--high); }
+        .vuln-card.medium { border-left-color: var(--medium); }
+        .vuln-card.low { border-left-color: var(--low); }
+
+        .vuln-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .vuln-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .vuln-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .vuln-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .code-block {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .recommendation {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .recommendation-title {
+            color: var(--success);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .file-list {
+            list-style: none;
+        }
+
+        .file-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <span>🛡️</span>
+                React Security Analysis Report
+            </h1>
+            <p class="subtitle">Comprehensive security scan results for your React application</p>
+            <div class="severity-badges">
+                <span class="badge badge-critical">🔴 2 Critical</span>
+                <span class="badge badge-high">🟠 0 High</span>
+                <span class="badge badge-medium">🟡 0 Medium</span>
+                <span class="badge badge-low">🔵 0 Low</span>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">1</div>
+                <div class="stat-label">Files Scanned</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">2</div>
+                <div class="stat-label">Vulnerabilities Found</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0.12s</div>
+                <div class="stat-label">Scan Duration</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">12:44:08 PM</div>
+                <div class="stat-label">Scan Time</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('all')">All Vulnerabilities</button>
+            <button class="tab" onclick="showTab('severity')">By Severity</button>
+            <button class="tab" onclick="showTab('type')">By Type</button>
+            <button class="tab" onclick="showTab('files')">By File</button>
+            <button class="tab" onclick="showTab('charts')">Analytics</button>
+        </div>
+
+        <div id="all" class="tab-content active">
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="filterVulns('ALL')">All</button>
+                <button class="filter-btn" onclick="filterVulns('CRITICAL')">Critical</button>
+                <button class="filter-btn" onclick="filterVulns('HIGH')">High</button>
+                <button class="filter-btn" onclick="filterVulns('MEDIUM')">Medium</button>
+                <button class="filter-btn" onclick="filterVulns('LOW')">Low</button>
+            </div>
+            <div id="vuln-list">
+                
+        <div class="vuln-card critical">
+            <div class="vuln-header">
+                <div>
+                    <div class="vuln-title">Eval Usage Detected</div>
+                    <div class="vuln-meta">
+                        <span class="meta-item">
+                            <span class="badge badge-critical">CRITICAL</span>
+                        </span>
+                        <span class="meta-item">
+                            <span>📦</span> Code Injection
+                        </span>
+                        <span class="meta-item">
+                            <span>🔖</span> CWE-95
+                        </span>
+                        <span class="meta-item">
+                            <span>🆔</span> VULN-1
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vuln-description">Using eval() can execute arbitrary code and lead to security vulnerabilities</div>
+            
+            <div class="vuln-meta">
+                <span class="meta-item">
+                    <span>📄</span> test-files/BlogApp.js
+                </span>
+                <span class="meta-item">
+                    <span>📍</span> Line 23
+                </span>
+            </div>
+
+            
+                <div class="code-block">
+                    <code>eval(input)</code>
+                </div>
+            
+
+            <div class="recommendation">
+                <div class="recommendation-title">
+                    <span>💡</span> Recommendation
+                </div>
+                <div>Avoid eval(). Use JSON.parse() for JSON or Function constructor with strict validation</div>
+            </div>
+        </div>
+    
+        <div class="vuln-card critical">
+            <div class="vuln-header">
+                <div>
+                    <div class="vuln-title">Dangerous innerHTML Usage</div>
+                    <div class="vuln-meta">
+                        <span class="meta-item">
+                            <span class="badge badge-critical">CRITICAL</span>
+                        </span>
+                        <span class="meta-item">
+                            <span>📦</span> XSS
+                        </span>
+                        <span class="meta-item">
+                            <span>🔖</span> CWE-79
+                        </span>
+                        <span class="meta-item">
+                            <span>🆔</span> VULN-2
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vuln-description">Using dangerouslySetInnerHTML without sanitization can lead to XSS attacks</div>
+            
+            <div class="vuln-meta">
+                <span class="meta-item">
+                    <span>📄</span> test-files/BlogApp.js
+                </span>
+                <span class="meta-item">
+                    <span>📍</span> Line 34
+                </span>
+            </div>
+
+            
+                <div class="code-block">
+                    <code>dangerouslySetInnerHTML={createMarkup()}</code>
+                </div>
+            
+
+            <div class="recommendation">
+                <div class="recommendation-title">
+                    <span>💡</span> Recommendation
+                </div>
+                <div>Use DOMPurify.sanitize() or avoid dangerouslySetInnerHTML entirely</div>
+            </div>
+        </div>
+    
+            </div>
+        </div>
+
+        <div id="severity" class="tab-content">
+            
+                <h2 style="color: var(--critical); margin: 2rem 0 1rem;">CRITICAL (2)</h2>
+                
+        <div class="vuln-card critical">
+            <div class="vuln-header">
+                <div>
+                    <div class="vuln-title">Eval Usage Detected</div>
+                    <div class="vuln-meta">
+                        <span class="meta-item">
+                            <span class="badge badge-critical">CRITICAL</span>
+                        </span>
+                        <span class="meta-item">
+                            <span>📦</span> Code Injection
+                        </span>
+                        <span class="meta-item">
+                            <span>🔖</span> CWE-95
+                        </span>
+                        <span class="meta-item">
+                            <span>🆔</span> VULN-1
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vuln-description">Using eval() can execute arbitrary code and lead to security vulnerabilities</div>
+            
+            <div class="vuln-meta">
+                <span class="meta-item">
+                    <span>📄</span> test-files/BlogApp.js
+                </span>
+                <span class="meta-item">
+                    <span>📍</span> Line 23
+                </span>
+            </div>
+
+            
+                <div class="code-block">
+                    <code>eval(input)</code>
+                </div>
+            
+
+            <div class="recommendation">
+                <div class="recommendation-title">
+                    <span>💡</span> Recommendation
+                </div>
+                <div>Avoid eval(). Use JSON.parse() for JSON or Function constructor with strict validation</div>
+            </div>
+        </div>
+    
+        <div class="vuln-card critical">
+            <div class="vuln-header">
+                <div>
+                    <div class="vuln-title">Dangerous innerHTML Usage</div>
+                    <div class="vuln-meta">
+                        <span class="meta-item">
+                            <span class="badge badge-critical">CRITICAL</span>
+                        </span>
+                        <span class="meta-item">
+                            <span>📦</span> XSS
+                        </span>
+                        <span class="meta-item">
+                            <span>🔖</span> CWE-79
+                        </span>
+                        <span class="meta-item">
+                            <span>🆔</span> VULN-2
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vuln-description">Using dangerouslySetInnerHTML without sanitization can lead to XSS attacks</div>
+            
+            <div class="vuln-meta">
+                <span class="meta-item">
+                    <span>📄</span> test-files/BlogApp.js
+                </span>
+                <span class="meta-item">
+                    <span>📍</span> Line 34
+                </span>
+            </div>
+
+            
+                <div class="code-block">
+                    <code>dangerouslySetInnerHTML={createMarkup()}</code>
+                </div>
+            
+
+            <div class="recommendation">
+                <div class="recommendation-title">
+                    <span>💡</span> Recommendation
+                </div>
+                <div>Use DOMPurify.sanitize() or avoid dangerouslySetInnerHTML entirely</div>
+            </div>
+        </div>
+    
+            
+        </div>
+
+        <div id="type" class="tab-content">
+            
+                <h2 style="margin: 2rem 0 1rem; color: var(--primary);">Code Injection (1)</h2>
+                
+        <div class="vuln-card critical">
+            <div class="vuln-header">
+                <div>
+                    <div class="vuln-title">Eval Usage Detected</div>
+                    <div class="vuln-meta">
+                        <span class="meta-item">
+                            <span class="badge badge-critical">CRITICAL</span>
+                        </span>
+                        <span class="meta-item">
+                            <span>📦</span> Code Injection
+                        </span>
+                        <span class="meta-item">
+                            <span>🔖</span> CWE-95
+                        </span>
+                        <span class="meta-item">
+                            <span>🆔</span> VULN-1
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vuln-description">Using eval() can execute arbitrary code and lead to security vulnerabilities</div>
+            
+            <div class="vuln-meta">
+                <span class="meta-item">
+                    <span>📄</span> test-files/BlogApp.js
+                </span>
+                <span class="meta-item">
+                    <span>📍</span> Line 23
+                </span>
+            </div>
+
+            
+                <div class="code-block">
+                    <code>eval(input)</code>
+                </div>
+            
+
+            <div class="recommendation">
+                <div class="recommendation-title">
+                    <span>💡</span> Recommendation
+                </div>
+                <div>Avoid eval(). Use JSON.parse() for JSON or Function constructor with strict validation</div>
+            </div>
+        </div>
+    
+            
+                <h2 style="margin: 2rem 0 1rem; color: var(--primary);">XSS (1)</h2>
+                
+        <div class="vuln-card critical">
+            <div class="vuln-header">
+                <div>
+                    <div class="vuln-title">Dangerous innerHTML Usage</div>
+                    <div class="vuln-meta">
+                        <span class="meta-item">
+                            <span class="badge badge-critical">CRITICAL</span>
+                        </span>
+                        <span class="meta-item">
+                            <span>📦</span> XSS
+                        </span>
+                        <span class="meta-item">
+                            <span>🔖</span> CWE-79
+                        </span>
+                        <span class="meta-item">
+                            <span>🆔</span> VULN-2
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vuln-description">Using dangerouslySetInnerHTML without sanitization can lead to XSS attacks</div>
+            
+            <div class="vuln-meta">
+                <span class="meta-item">
+                    <span>📄</span> test-files/BlogApp.js
+                </span>
+                <span class="meta-item">
+                    <span>📍</span> Line 34
+                </span>
+            </div>
+
+            
+                <div class="code-block">
+                    <code>dangerouslySetInnerHTML={createMarkup()}</code>
+                </div>
+            
+
+            <div class="recommendation">
+                <div class="recommendation-title">
+                    <span>💡</span> Recommendation
+                </div>
+                <div>Use DOMPurify.sanitize() or avoid dangerouslySetInnerHTML entirely</div>
+            </div>
+        </div>
+    
+            
+        </div>
+
+        <div id="files" class="tab-content">
+            <ul class="file-list">
+                
+                    <li class="file-item">
+                        <div class="file-name">📄 test-files/BlogApp.js</div>
+                        <div style="color: var(--text-secondary); margin-top: 0.5rem;">
+                            2 vulnerabilities found
+                        </div>
+                        <div class="severity-badges" style="margin-top: 1rem;">
+                            <span class="badge badge-critical">2 CRITICAL</span>
+                        </div>
+                    </li>
+                
+            </ul>
+        </div>
+
+        <div id="charts" class="tab-content">
+            <div class="chart-container">
+                <h2 style="margin-bottom: 1.5rem;">Vulnerability Distribution</h2>
+                <canvas id="severityChart" style="max-height: 300px;"></canvas>
+            </div>
+            <div class="chart-container">
+                <h2 style="margin-bottom: 1.5rem;">Vulnerabilities by Type</h2>
+                <canvas id="typeChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+
+        <footer>
+            <p>Report generated on 10/14/2025, 12:44:08 PM</p>
+            <p style="margin-top: 0.5rem;">React Security Analyzer v1.0 - Built with AST Analysis</p>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+        const vulnerabilities = [{"type":"Code Injection","severity":"CRITICAL","title":"Eval Usage Detected","description":"Using eval() can execute arbitrary code and lead to security vulnerabilities","file":"test-files/BlogApp.js","line":23,"code":"eval(input)","recommendation":"Avoid eval(). Use JSON.parse() for JSON or Function constructor with strict validation","cwe":"CWE-95","id":"VULN-1","timestamp":"2025-10-14T12:44:08.921Z"},{"type":"XSS","severity":"CRITICAL","title":"Dangerous innerHTML Usage","description":"Using dangerouslySetInnerHTML without sanitization can lead to XSS attacks","file":"test-files/BlogApp.js","line":34,"code":"dangerouslySetInnerHTML={createMarkup()}","recommendation":"Use DOMPurify.sanitize() or avoid dangerouslySetInnerHTML entirely","cwe":"CWE-79","id":"VULN-2","timestamp":"2025-10-14T12:44:08.926Z"}];
+        
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+
+            if (tabName === 'charts') {
+                setTimeout(initCharts, 100);
+            }
+        }
+
+        function filterVulns(severity) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const cards = document.querySelectorAll('#vuln-list .vuln-card');
+            cards.forEach(card => {
+                if (severity === 'ALL' || card.classList.contains(severity.toLowerCase())) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function initCharts() {
+            const severityCtx = document.getElementById('severityChart');
+            const typeCtx = document.getElementById('typeChart');
+
+            if (window.severityChart) window.severityChart.destroy();
+            if (window.typeChart) window.typeChart.destroy();
+
+            const severityData = {
+                critical: 2,
+                high: 0,
+                medium: 0,
+                low: 0
+            };
+
+            window.severityChart = new Chart(severityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
+                    datasets: [{
+                        data: [severityData.critical, severityData.high, severityData.medium, severityData.low],
+                        backgroundColor: ['#ef4444', '#f97316', '#fbbf24', '#3b82f6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#e2e8f0', font: { size: 14 } }
+                        }
+                    }
+                }
+            });
+
+            const typeData = {};
+            vulnerabilities.forEach(v => {
+                typeData[v.type] = (typeData[v.type] || 0) + 1;
+            });
+
+            window.typeChart = new Chart(typeCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(typeData),
+                    datasets: [{
+                        label: 'Count',
+                        data: Object.values(typeData),
+                        backgroundColor: '#6366f1',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('React Security Report loaded with', vulnerabilities.length, 'vulnerabilities');
+        });
+    </script>
+</body>
+</html>
